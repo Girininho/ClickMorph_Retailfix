@@ -1,6 +1,6 @@
 # ClickMorph-WoW
 
-This version includes fixes and updates for Retail WoW (11.x) for personal use, but may be useful for anyone who finds manually looking up every ID in iMorph tedious and misses the Alt+Shift+Click morphing convenience.  
+This version includes fixes and updates for Retail WoW (11.x) for personal use, but may be useful for anyone who finds manually looking up every ID tedious and misses the Alt+Shift+Click morphing convenience.  
 
 ClickMorph lets you alt-click to morph with [iMorph](https://www.ownedcore.com/forums/wow-classic/wow-classic-general/799754-wow-classic-morpher.html) or [jMorph](https://www.ownedcore.com/forums/world-of-warcraft/world-of-warcraft-bots-programs/795619-jmorph-tmorph-morpher-recreated.html).  
 **Note:** It is _not_ standalone; you must load a morpher first.
@@ -30,12 +30,12 @@ Videos: [Classic](https://streamable.com/m601s), [Retail](https://streamable.com
 
 ## Known Issues / ToDo
 
-* **Mounts Tab Unlock Button**: May not appear in some setups; API conflicts or other addons (e.g., Mount Journal Enhancer) can interfere  
+* **Unlock Button**: May not appear in some setups; API conflicts or other addons (e.g., Mount Journal Enhancer) can interfere will try to fix first
 * **Wardrobe / Appearances Morphing**: Some sets may not morph correctly; needs additional testing and possibly updated hooks  
 * **Inspect Window / Item Links**: Functionality partially tested; may require fixes for Retail WoW 11.x  
 * **iMorph Integration**: Ensure iMorph is loaded first; otherwise Alt+Shift+Click morphing will fail  
-* **Load Order Sensitivity**: Addons depending on TMW or Action may trigger conflicts; careful load order management may be necessary  
-* **Future Enhancements**: Remorph on login/reload could be optimized; GUI buttons could be redesigned for clarity  
+* **Load Order Sensitivity**: Addons depending on TMW or Action may trigger conflicts; careful load order management may be necessary  as to load ClickMorph Lastly
+* **Future Enhancements**: Remorph on login/reload could be optimized; GUI buttons could be redesigned for clarity and Re-Made for a config menu (Maybe)
 
 ---
 
@@ -43,4 +43,4 @@ Videos: [Classic](https://streamable.com/m601s), [Retail](https://streamable.com
 
 * Original concept and first version by [Icesythe7](https://www.ownedcore.com/forums/world-of-warcraft/world-of-warcraft-general/wow-ui-macros-talent-specs/785473-clickmog-addon-lucidmorph.html)  
 * ClickMorph development by [Ketho](https://github.com/ketho-wow/ClickMorph)  
-* Forked and updated for Retail WoW by Victor Nunes Leites  
+* Forked and updated for Retail WoW by Me
