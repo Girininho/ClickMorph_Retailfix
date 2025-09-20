@@ -7,6 +7,7 @@
 ## Author: Ketho, Icesythe7
 ## SavedVariables: ClickMorphDB
 ## SavedVariablesPerCharacter: ClickMorph_iMorphV1
+## OptionalDeps: TellMeWhen
 
 Libs\LibStub\LibStub.lua
 Libs\StdUiV2\StdUi.xml
