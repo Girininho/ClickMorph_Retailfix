@@ -1,8 +1,9 @@
-## Interface-Retail: 90005
-## Interface-Classic: 11307
-## Interface-BCC: 20501
+## Interface-Retail: 110002
+## Interface-Classic: 11503
+## Interface-BCC: 20504
+## Interface-Wrath: 30403
 ## Title: ClickMorphData
-## Author: Ketho
+## Author: Ketho, Girininho
 ## Notes: Load on Demand FileData
 ## LoadOnDemand: 1
 ## SavedVariables: ClickMorphDataDB
