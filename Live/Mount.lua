@@ -17,18 +17,52 @@ else
 end
 
 function f:InitMountJournal()
+	-- Aguardar carregamento completo com verificação robusta
+	if not MountJournal then
+		C_Timer.After(0.5, function() self:InitMountJournal() end)
+		return
+	end
+	
 	-- only load once the mounts tab is opened
 	MountJournal:HookScript("OnShow", function(frame)
 		if active then
 			return
 		end
 		active = true
+		
+		-- Verificações robustas para WoW 11.x
+		local success = true
+		
+		-- Verificar e criar hook do ModelScene
+		if MountJournal.MountDisplay and MountJournal.MountDisplay.ModelScene then
+			pcall(function()
+				MountJournal.MountDisplay.ModelScene:HookScript("OnMouseUp", CM.MorphMountModelScene)
+			end)
+		else
+			print("|cffFFFF00ClickMorph:|r Warning - MountDisplay.ModelScene not found")
+			success = false
+		end
+		
+		-- Verificar e criar hooks dos botões do ScrollFrame
+		if MountJournal.ListScrollFrame and MountJournal.ListScrollFrame.buttons then
+			for i, button in pairs(MountJournal.ListScrollFrame.buttons) do
+				if button and button.HookScript then
+					pcall(function()
+						button:HookScript("OnClick", CM.MorphMountScrollFrame)
+					end)
+				end
+			end
+		else
+			print("|cffFFFF00ClickMorph:|r Warning - ListScrollFrame.buttons not found")
+			success = false
+		end
+		
 		self:CreateUnlockButton()
-		-- modelscene
-		MountJournal.MountDisplay.ModelScene:HookScript("OnMouseUp", CM.MorphMountModelScene)
-		-- scrollframe buttons
-		for _, button in pairs(MountJournal.ListScrollFrame.buttons) do
-			button:HookScript("OnClick", CM.MorphMountScrollFrame)
+		
+		if success then
+			CM:PrintChat("Mount Journal hooks initialized successfully!")
+		else
+			CM:PrintChat("Mount Journal hooks had some issues - check debug", 1, 1, 0)
 		end
 	end)
 end
