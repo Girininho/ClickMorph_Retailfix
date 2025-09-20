@@ -375,6 +375,9 @@ if IsAddOnLoaded("Blizzard_Collections") then
 	C_Timer.After(1, InitializeHooks)
 end
 
+-- SUBSTITUA TODO O FINAL DO SEU ARQUIVO (da linha "-- Sistema de debug SEM emojis" até o final)
+-- Por este código:
+
 -- Sistema de debug SEM emojis
 function CM:Debug()
 	self:PrintChat("=== ClickMorph Debug ===")
@@ -408,18 +411,28 @@ function CM:Debug()
 		self:PrintChat("[FAIL] No morpher found - load iMorph first")
 	end
 end
+
 -- Comandos de debug
 SLASH_CLICKMORPH_DEBUG1 = "/cmdebug"
 SlashCmdList.CLICKMORPH_DEBUG = function()
 	CM:Debug()
 end
 
--- Mensagem de inicialização
-local f = CreateFrame("Frame")
-f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, addonName)
+-- Frame principal de inicialização (combinando tudo)
+local mainFrame = CreateFrame("Frame")
+mainFrame:RegisterEvent("ADDON_LOADED")
+mainFrame:SetScript("OnEvent", function(self, event, addonName)
 	if addonName == "ClickMorph" then
 		CM:PrintChat("Loaded! Use /cmdebug to check status. Make sure iMorph is injected!")
+		-- Não desregistrar ainda, vamos aguardar Collections também
+	elseif addonName == "Blizzard_Collections" then
+		-- Collections UI carregou, inicializar hooks
+		C_Timer.After(0.5, InitializeHooks)
 		self:UnregisterEvent(event)
 	end
 end)
+
+-- Se Collections já estiver carregado
+if IsAddOnLoaded("Blizzard_Collections") then
+	C_Timer.After(1, InitializeHooks)
+end
