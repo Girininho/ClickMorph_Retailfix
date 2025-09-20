@@ -1,0 +1,31 @@
+## Interface-Retail: 110002
+## Interface-Classic: 11503
+## Interface-BCC: 20504
+## Interface-Wrath: 30403
+## Version: @project-version@
+## Title: ClickMorph
+## Notes: Lets you alt-click to morph
+## Author: Ketho, Icesythe7, Girininho
+## SavedVariables: ClickMorphDB
+## SavedVariablesPerCharacter: ClickMorph_iMorphV1
+## OptionalDeps: TellMeWhen, Blizzard_Collections
+
+Libs\LibStub\LibStub.lua
+Libs\StdUiV2\StdUi.xml
+
+ClickMorph.lua
+Database.lua
+
+iMorph\iMorphV1.lua
+iMorph\iMorphLua.lua
+
+Gui.lua
+Npc.lua
+Inspect.lua
+Compat.lua
+
+Live\Mount.lua
+Live\Wardrobe.lua
+Live\Compatibility11x.lua
+
+Classic\Mount.lua

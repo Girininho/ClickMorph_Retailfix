@@ -1,0 +1,3 @@
+[submodule "Libs/StdUiV2"]
+	path = Libs/StdUiV2
+	url = https://github.com/kaminaris/StdUi.git

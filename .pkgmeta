@@ -1,0 +1,11 @@
+package-as: ClickMorph
+
+move-folders:
+  ClickMorph/Data: ClickMorphData
+
+externals:
+  Libs/LibStub: https://repos.wowace.com/wow/libstub/trunk
+
+ignore:
+  - README.md
+  - Libs/LibStub/tests
