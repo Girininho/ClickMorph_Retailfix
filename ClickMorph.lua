@@ -235,7 +235,147 @@ hooksecurefunc("HandleModifiedItemClick", function(item)
 	CM:MorphItem("player", item)
 end)
 
--- Sistema de debug simples
+-- ADICIONE ESSAS FUNÇÕES NO FINAL DO SEU ClickMorph.lua
+-- (depois da função Debug, antes dos comandos)
+
+-- Mounts
+function CM:MorphMount(unit, mountID)
+	local morph = self:CanMorph()
+	if morph and morph.mount then
+		local _, spellID, icon = C_MountJournal.GetMountInfoByID(mountID)
+		local displayID = C_MountJournal.GetMountInfoExtraByID(mountID)
+		if not displayID then
+			local multipleIDs = C_MountJournal.GetMountAllCreatureDisplayInfoByID(mountID)
+			if multipleIDs and #multipleIDs > 0 then
+				displayID = multipleIDs[math.random(#multipleIDs)].creatureDisplayID
+			end
+		end
+		if displayID and morph.mount(unit, displayID) then
+			local spellLink = GetSpellLink(spellID) or "Mount ID: "..mountID
+			CM:PrintChat(format("mount -> %d %s", displayID, spellLink))
+		else
+			CM:PrintChat("Failed to morph mount - no display ID found", 1, 1, 0)
+		end
+	end
+end
+
+function CM.MorphMountModelScene()
+	local mountID = MountJournal.selectedMountID
+	if mountID then
+		CM:MorphMount("player", mountID)
+	end
+end
+
+function CM.MorphMountScrollFrame(frame)
+	if frame.index then
+		local mountID = select(12, C_MountJournal.GetDisplayedMountInfo(frame.index))
+		if mountID then
+			CM:MorphMount("player", mountID)
+		end
+	end
+end
+
+-- Appearances/Transmog Sets
+function CM.MorphTransmogSet()
+	local morph = CM:CanMorph()
+	if morph and morph.item then
+		local setID = WardrobeCollectionFrame.SetsCollectionFrame.selectedSetID
+		if not setID then
+			CM:PrintChat("No set selected", 1, 1, 0)
+			return
+		end
+		
+		local setInfo = C_TransmogSets.GetSetInfo(setID)
+		if not setInfo then
+			CM:PrintChat("Could not get set info", 1, 1, 0)
+			return
+		end
+
+		-- Undress first
+		CM:Undress("player")
+		
+		-- Get set sources
+		local sources = C_TransmogSets.GetSetSources(setID)
+		if sources then
+			for _, sourceID in pairs(sources) do
+				local sourceInfo = C_TransmogCollection.GetSourceInfo(sourceID)
+				if sourceInfo and sourceInfo.itemID then
+					local slotID = C_Transmog.GetSlotForInventoryType(sourceInfo.invType)
+					if slotID then
+						morph.item("player", slotID, sourceInfo.itemID)
+					end
+				end
+			end
+			CM:PrintChat(format("itemset -> %d %s", setID, setInfo.name))
+		else
+			CM:PrintChat("Could not get set sources", 1, 1, 0)
+		end
+	end
+end
+
+-- Inicializar hooks quando os UIs carregarem
+local function InitializeHooks()
+	-- Mount Journal hooks
+	if MountJournal then
+		-- Model scene click
+		if MountJournal.MountDisplay and MountJournal.MountDisplay.ModelScene then
+			MountJournal.MountDisplay.ModelScene:HookScript("OnMouseUp", function(self, button)
+				if button == "LeftButton" and IsAltKeyDown() then
+					CM.MorphMountModelScene()
+				end
+			end)
+		end
+		
+		-- List scroll frame buttons
+		if MountJournal.ListScrollFrame and MountJournal.ListScrollFrame.buttons then
+			for _, button in pairs(MountJournal.ListScrollFrame.buttons) do
+				if button then
+					button:HookScript("OnClick", function(self, btn)
+						if btn == "LeftButton" and IsAltKeyDown() then
+							CM.MorphMountScrollFrame(self)
+						end
+					end)
+				end
+			end
+		end
+		
+		CM:PrintChat("Mount Journal hooks initialized")
+	end
+	
+	-- Wardrobe Set hooks
+	if WardrobeCollectionFrame and WardrobeCollectionFrame.SetsCollectionFrame then
+		local setsFrame = WardrobeCollectionFrame.SetsCollectionFrame
+		
+		-- Hook set model
+		if setsFrame.Model then
+			setsFrame.Model:HookScript("OnMouseUp", function(self, button)
+				if button == "LeftButton" and IsAltKeyDown() then
+					CM.MorphTransmogSet()
+				end
+			end)
+		end
+		
+		CM:PrintChat("Wardrobe Sets hooks initialized")
+	end
+end
+
+-- Hook de inicialização
+local hookFrame = CreateFrame("Frame")
+hookFrame:RegisterEvent("ADDON_LOADED")
+hookFrame:SetScript("OnEvent", function(self, event, addonName)
+	if addonName == "Blizzard_Collections" then
+		-- Collections UI carregou, inicializar hooks
+		C_Timer.After(0.5, InitializeHooks)
+		self:UnregisterEvent(event)
+	end
+end)
+
+-- Se Collections já estiver carregado
+if IsAddOnLoaded("Blizzard_Collections") then
+	C_Timer.After(1, InitializeHooks)
+end
+
+-- Sistema de debug SEM emojis
 function CM:Debug()
 	self:PrintChat("=== ClickMorph Debug ===")
 	self:PrintChat("Version: WoW 11.x Compatible")
@@ -244,20 +384,31 @@ function CM:Debug()
 	
 	-- Verificar morpher
 	for name, morpher in pairs(self.morphers) do
-		local status = morpher.loaded() and "✅ LOADED" or "❌ NOT LOADED"
+		local status = morpher.loaded() and "[OK] LOADED" or "[FAIL] NOT LOADED"
 		self:PrintChat("Morpher " .. name .. ": " .. status)
+	end
+	
+	-- Verificar UIs
+	local uis = {
+		["MountJournal"] = MountJournal,
+		["WardrobeCollectionFrame"] = WardrobeCollectionFrame,
+		["Collections"] = IsAddOnLoaded("Blizzard_Collections")
+	}
+	
+	for name, obj in pairs(uis) do
+		local status = obj and "[OK] AVAILABLE" or "[FAIL] NOT AVAILABLE"
+		self:PrintChat("UI " .. name .. ": " .. status)
 	end
 	
 	-- Teste básico
 	local morpher = self:CanMorph(true)
 	if morpher then
-		self:PrintChat("✅ Ready to morph!")
+		self:PrintChat("[OK] Ready to morph!")
 	else
-		self:PrintChat("❌ No morpher found - load iMorph first")
+		self:PrintChat("[FAIL] No morpher found - load iMorph first")
 	end
 end
-
--- Comando de debug
+-- Comandos de debug
 SLASH_CLICKMORPH_DEBUG1 = "/cmdebug"
 SlashCmdList.CLICKMORPH_DEBUG = function()
 	CM:Debug()
@@ -268,7 +419,7 @@ local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, addonName)
 	if addonName == "ClickMorph" then
-		CM:PrintChat("✅ Loaded! Use /cmdebug to check status. Make sure iMorph is injected!")
+		CM:PrintChat("Loaded! Use /cmdebug to check status. Make sure iMorph is injected!")
 		self:UnregisterEvent(event)
 	end
 end)
