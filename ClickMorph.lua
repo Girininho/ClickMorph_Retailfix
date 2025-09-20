@@ -370,10 +370,12 @@ hookFrame:SetScript("OnEvent", function(self, event, addonName)
 	end
 end)
 
--- Se Collections já estiver carregado
-if IsAddOnLoaded("Blizzard_Collections") then
-	C_Timer.After(1, InitializeHooks)
-end
+-- Verificar Collections com delay para evitar erro de carregamento
+C_Timer.After(2, function()
+	if IsAddOnLoaded("Blizzard_Collections") then
+		InitializeHooks()
+	end
+end)
 
 -- SUBSTITUA TODO O FINAL DO SEU ARQUIVO (da linha "-- Sistema de debug SEM emojis" até o final)
 -- Por este código:
