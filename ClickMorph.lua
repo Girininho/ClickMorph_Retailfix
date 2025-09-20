@@ -1,10 +1,9 @@
+-- VERSÃO DE EMERGÊNCIA - FUNCIONAL E SIMPLES
 ClickMorph = {}
 local CM = ClickMorph
 CM.isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
 CM.project = CM.isRetail and "Live" or "Classic"
 local FileData
-local BUILD_VERSION = select(4, GetBuildInfo())
-local ADDON_VERSION = GetAddOnMetadata("ClickMorph", "Version") or "Dev"
 
 -- inventory type -> equipment slot -> slot name
 CM.SlotNames = {
@@ -70,10 +69,8 @@ local DualWieldSlot = {
 	[INVSLOT_OFFHAND] = INVSLOT_MAINHAND,
 }
 
-local genders = {MALE, FEMALE}
-
 function CM:PrintChat(msg, r, g, b)
-	if not ClickMorphDB.silent then
+	if not ClickMorphDB or not ClickMorphDB.silent then
 		DEFAULT_CHAT_FRAME:AddMessage(format("|cff7fff00ClickMorph|r: |r%s", msg), r, g, b)
 	end
 end
@@ -87,10 +84,16 @@ function CM:GetFileData(frame)
 				EnableAddOn(addon, true)
 				LoadAddOn(addon)
 			else
-				frame:SetScript("OnUpdate", nil) -- cancel any wardrobe timer
-				self:PrintChat("The ClickMorphData folder could not be found."
-					.."Make sure you downloaded the release zip from https://github.com/ketho-wow/ClickMorph/releases", 1, 1, 0)
-				error(addon..": "..reason)
+				if frame then
+					frame:SetScript("OnUpdate", nil) -- cancel any wardrobe timer
+				end
+				self:PrintChat("The ClickMorphData folder could not be found. Using basic functionality.", 1, 1, 0)
+				-- Criar dados básicos temporários
+				FileData = {
+					Live = { ItemAppearance = {}, ItemVisuals = {} },
+					Classic = { ItemSet = {}, Mount = {}, Npc = {} }
+				}
+				return FileData
 			end
 		end
 		FileData = _G[addon]
@@ -105,14 +108,8 @@ function CM:CanMorph(override)
 				return morpher
 			end
 		end
-		
-		-- Verificação específica - SEMPRE iMorph já que jMorph morreu
 		local name = "iMorph"
-		if BUILD_VERSION >= 110000 then
-			self:PrintChat("Could not find |cffFFFF00"..name.."|r. Make sure iMorph is loaded and injected first for WoW 11.x retail.", 1, 1, 0)
-		else
-			self:PrintChat("Could not find |cffFFFF00"..name.."|r. Make sure it is loaded before you use ClickMorph.", 1, 1, 0)
-		end
+		self:PrintChat("Could not find |cffFFFF00"..name.."|r. Make sure iMorph is loaded and injected.", 1, 1, 0)
 	end
 end
 
@@ -131,155 +128,66 @@ function CM:CanMorphMount()
 end
 
 CM.morphers = {
-	iMorph = { -- classic
-		-- morphers can be unloaded and initialized at any later moment
+	iMorph = { -- funciona em retail e classic
 		loaded = function() return IMorphInfo end,
-		reset = function() -- todo: add reset to naked
-			iMorphFrame:Reset()
-			wipe(ClickMorph_iMorphV1)
+		reset = function()
+			if iMorphFrame then
+				iMorphFrame:Reset()
+			end
+			if ClickMorph_iMorphV1 then
+				wipe(ClickMorph_iMorphV1)
+			end
 		end,
 		model = function(_, displayID)
-			Morph(displayID)
+			if Morph then
+				Morph(displayID)
+			end
 		end,
 		race = function(_, raceID, genderID)
-			SetRace(raceID, genderID)
+			if SetRace then
+				SetRace(raceID, genderID)
+			end
 		end,
 		mount = function(_, displayID)
-			if CM:CanMorphMount() then
+			if CM:CanMorphMount() and SetMount then
 				SetMount(displayID)
 				return true
 			end
 		end,
 		item = function(_, slotID, itemID)
-			SetItem(slotID, itemID)
-		end,
-		scale = function(_, value)
-			SetScale(value)
-			ClickMorph_iMorphV1.tempscale = value -- workaround
-		end,
-		--SetEnchant(slotId, enchantId)
-		--SetTitle(titleId)
-		--SetMedal(medalId)
-		--SetFace(face)
-		--SetFeatures(feature)
-		--SetHairStyle(style)
-		--SetHairColor(color)
-		--SetSkinColor(color)
-	},
-	jMorph = { -- retail
-		loaded = function() return jMorphLoaded end,
-		update = function(unit)
-			UpdateModel(unit)
-		end,
-		model = function(unit, displayID)
-			SetDisplayID(unit, displayID)
-			UpdateModel(unit)
-		end,
-		race = function(unit, raceID)
-			SetDisplayID(unit, 0)
-			SetAlternateRace(unit, raceID)
-			UpdateModel(unit)
-		end,
-		gender = function(unit, genderID, raceID)
-			SetGender(unit, genderID)
-			SetAlternateRace(unit, raceID)
-			UpdateModel(unit)
-		end,
-		mount = function(unit, displayID)
-			if CM:CanMorphMount() then
-				SetMountDisplayID(unit, displayID)
-				MorphPlayerMount()
-				return true
+			if SetItem then
+				SetItem(slotID, itemID)
 			end
 		end,
-		item = function(unit, slotID, itemID, itemModID)
-			SetVisibleItem(unit, slotID, itemID, itemModID)
-			-- dont automatically update for every item in an item set
+		scale = function(_, value)
+			if SetScale then
+				SetScale(value)
+				if ClickMorph_iMorphV1 then
+					ClickMorph_iMorphV1.tempscale = value -- workaround
+				end
+			end
 		end,
-		enchant = function(unit, slotID, visualID)
-			SetVisibleEnchant(unit, slotID, visualID)
-			UpdateModel(unit)
-		end,
-		scale = function(unit, value)
-			SetScale(unit, value)
-		end,
-		-- spell (nyi)
-		-- title
-		-- scale
-		-- skin
-		-- face
-		-- hair
-		-- haircolor
-		-- piercings
-		-- tattoos
-		-- horns
-		-- blindfold
-		-- shapeshift
-		-- weather
 	},
 }
 
 function CM:ResetMorph()
 	local morph = self:CanMorph(true)
-	if morph then
-		if morph.reset then
-			morph.reset()
-		end
-		--[[ resetting the scale slider already sets the value to 1
-		if morph.scale then -- imorph doesnt reset scale
-			morph.scale("player", 1)
-		end
-		]]
+	if morph and morph.reset then
+		morph.reset()
 	end
 end
 
 function CM:Undress(unit)
 	local morph = self:CanMorph(true)
 	if morph and morph.item then
-		for _, invSlot in pairs(GearSlots) do -- excludes weapons
+		for _, invSlot in pairs(GearSlots) do
 			morph.item(unit, invSlot, 0)
 		end
 	end
 end
 
--- Mounts
-function CM:MorphMount(unit, mountID)
-	local morph = self:CanMorph()
-	if morph and morph.mount then
-		local _, spellID = C_MountJournal.GetMountInfoByID(mountID)
-		local displayID = C_MountJournal.GetMountInfoExtraByID(mountID)
-		if not displayID then
-			local multipleIDs = C_MountJournal.GetMountAllCreatureDisplayInfoByID(mountID)
-			displayID = multipleIDs[random(#multipleIDs)].creatureDisplayID
-		end
-		if morph.mount(unit, displayID) then
-			CM:PrintChat(format("mount -> |cffFFFF00%d|r %s", displayID, GetSpellLink(spellID)))
-		end
-	end
-end
-
-function CM:MorphMountClassic(unit, displayID, spellID, override)
-	local morph = self:CanMorph(override)
-	if morph and morph.mount then
-		if morph.mount(unit, displayID) then
-			CM:PrintChat(format("mount -> |cffFFFF00%d|r %s", displayID, GetSpellLink(spellID)))
-		end
-	end
-end
-
-function CM.MorphMountModelScene()
-	local mountID = MountJournal.selectedMountID
-	CM:MorphMount("player", mountID)
-end
-
-function CM.MorphMountScrollFrame(frame)
-	local mountID = select(12, C_MountJournal.GetDisplayedMountInfo(frame.index))
-	CM:MorphMount("player", mountID)
-end
-
 -- Items
 function CM:GetItemInfo(item)
-	-- try to preserve item link if we receive one
 	if type(item) == "string" then
 		local itemID = tonumber(item:match("item:(%d+)"))
 		local equipLoc = select(9, GetItemInfo(itemID))
@@ -290,10 +198,6 @@ function CM:GetItemInfo(item)
 	end
 end
 
--- only alternate clickmorphing both weapon slots when the player is actually dual wielding since the animation will reflect that
--- IsDualWielding seems to return true when both MH/OH or only OH are equipped with a (one or two-hand) weapon
--- in jMorph it will conflict since they also clickmorph from the appearances tab, e.g. when we morph offhand they will morph mainhand simultaenously
--- bug: when trying to morph shields it will attempt to morph MH to shield and fail but cba to check that with MorphItemBySource not providing equiploc
 function CM:GetDualWieldSlot(slot)
 	if DualWieldSlot[slot] and IsDualWielding() then
 		lastWeaponSlot = DualWieldSlot[lastWeaponSlot]
@@ -313,7 +217,6 @@ end
 
 function CM:MorphItem(unit, item, silent)
 	local morph = CM:CanMorph()
-	-- nobody wants to morph while looting and it would interfere with dkp addons
 	if item and morph and morph.item and not IsLooting() then
 		local itemID, itemLink, equipLoc = CM:GetItemInfo(item)
 		local slotID = InvTypeToSlot[equipLoc]
@@ -327,210 +230,45 @@ function CM:MorphItem(unit, item, silent)
 	end
 end
 
+-- Hook principal para Alt+Click
 hooksecurefunc("HandleModifiedItemClick", function(item)
 	CM:MorphItem("player", item)
 end)
 
-function CM:MorphItemBySource(unit, source, silent)
-	local morph = self:CanMorph()
-	if morph and morph.item then
-		local slotID = C_Transmog.GetSlotForInventoryType(source.invType)
-		slotID = self:GetDualWieldSlot(slotID)
-		local itemLink = select(6, C_TransmogCollection.GetAppearanceSourceInfo(source.sourceID))
-		local itemText = itemLink:find("%[%]") and CM.ItemAppearance and CM.ItemAppearance[source.visualID] or itemLink
-		morph.item(unit, slotID, source.itemID, source.itemModID)
-		morph.update(unit)
-		local fullItemId = source.itemID..(source.itemModID > 0 and ":"..source.itemModID or "")
-		if not silent then
-			self:PrintChat(format("|cffFFFF00%s|r -> item |cff71D5FF%s|r %s", CM.SlotNames[slotID], fullItemId, itemText))
-		end
-	end
-end
-
-function CM:MorphEnchant(unit, slotID, visualID, enchantName)
-	local morph = self:CanMorph()
-	if morph and morph.enchant then
-		morph.enchant(unit, slotID, visualID)
-		self:PrintChat(format("|cffFFFF00%s|r -> enchant |cff71D5FF%d|r %s", CM.SlotNames[slotID], visualID, enchantName))
-	end
-end
-
-function CM:MorphModel(unit, displayID, npcID, npcName, override)
-	local morph = self:CanMorph(override)
-	if morph and morph.model then
-		morph.model(unit, displayID)
-		if npcID and npcName then
-			self:PrintChat(format("model -> |cff71D5FF%d|r (NPC |cffFFFF00%d|r %s)", displayID, npcID, npcName))
-		else
-			self:PrintChat(format("model -> |cff71D5FF%d|r", displayID))
-		end
-	end
-end
-
--- Appearances
-function CM.MorphTransmogSet() -- retail
-	local morph = CM:CanMorph()
-	if morph and morph.item then
-		local setID = WardrobeCollectionFrame.SetsCollectionFrame.selectedSetID
-		local setInfo = C_TransmogSets.GetSetInfo(setID)
-
-		for _, v in pairs(WardrobeSetsDataProviderMixin:GetSortedSetSources(setID)) do
-			local source = C_TransmogCollection.GetSourceInfo(v.sourceID)
-			local slotID = C_Transmog.GetSlotForInventoryType(v.invType)
-			morph.item("player", CM.SlotNames[slotID], source.itemID, source.itemModID)
-		end
-		morph.update("player")
-		CM:PrintChat(format("itemset -> |cff71D5FF%d|r |cffFFFF00%s|r (%s)", setID, setInfo.name, setInfo.description or ""))
-	end
-end
-
-function CM.MorphTransmogItem(frame) -- retail
-	local loc = WardrobeCollectionFrame.ItemsCollectionFrame.transmogLocation
-	local visualID = frame.visualInfo.visualID
-
-	if loc.transmogType == Enum.TransmogType.Illusion then
-		local slotID = GetInventorySlotInfo(loc.slotID)
-		local name
-		if frame.visualInfo.sourceID then
-			local link = select(3, C_TransmogCollection.GetIllusionSourceInfo(frame.visualInfo.sourceID))
-			name = #link > 0 and link
-		end
-		CM:MorphEnchant("player", slotID, visualID, name or CM.ItemVisuals[visualID])
-	elseif loc.transmogType == Enum.TransmogType.Appearance then
-		local sources = WardrobeCollectionFrame_GetSortedAppearanceSources(visualID)
-		for idx, source in pairs(sources) do
-			-- get the index the arrow is pointing at
-			if idx == WardrobeCollectionFrame.tooltipSourceIndex then
-				CM:MorphItemBySource("player", source)
-			end
-		end
-	end
-end
-
-function CM:MorphItemSet(itemSetID, override) -- classic
-	local morph = CM:CanMorph(override)
-	if morph then
-		local itemset = self:GetFileData().Classic.ItemSet[itemSetID]
-		if morph.item and itemset then
-			self:Undress() -- todo: only undress gear for gear item sets instead of weapon sets
-			for slot, item in pairs(itemset) do
-				if type(slot) == "number" then -- ignore "name" key
-					SetItem(slot, item)
-				end
-			end
-			CM:PrintChat(format("itemset -> |cff71D5FF%d|r |cffFFFF00%s|r", itemSetID, itemset.name))
-		end
-	end
-end
-
-function CM:MorphRace(unit, race, sex)
-	local morph = self:CanMorph(true)
-	if morph and morph.race then
-		morph.race(unit, race, sex)
-	end
-end
-
-function CM:MorphScale(unit, value)
-	local morph = self:CanMorph(true)
-	if morph and morph.scale then
-		morph.scale(unit, value)
-	end
-end
-
--- ============================================
--- SISTEMA DE DEBUG PARA WOW 11.X
--- ============================================
-
-function CM:Debug(message)
-	if ClickMorphDB and ClickMorphDB.debug then
-		print("|cff7fff00ClickMorph DEBUG:|r " .. tostring(message))
-	end
-end
-
-function CM:CheckSystem()
-	self:Debug("=== ClickMorph System Check v" .. ADDON_VERSION .. " ===")
-	self:Debug("WoW Build: " .. BUILD_VERSION)
-	self:Debug("Project: " .. self.project)
-	self:Debug("IsRetail: " .. tostring(self.isRetail))
+-- Sistema de debug simples
+function CM:Debug()
+	self:PrintChat("=== ClickMorph Debug ===")
+	self:PrintChat("Version: WoW 11.x Compatible")
+	self:PrintChat("Project: " .. self.project)
+	self:PrintChat("IsRetail: " .. tostring(self.isRetail))
 	
-	-- Verificar morphers
+	-- Verificar morpher
 	for name, morpher in pairs(self.morphers) do
 		local status = morpher.loaded() and "✅ LOADED" or "❌ NOT LOADED"
-		self:Debug("Morpher " .. name .. ": " .. status)
+		self:PrintChat("Morpher " .. name .. ": " .. status)
 	end
 	
-	-- Verificar UIs críticas
-	local uis = {
-		["MountJournal"] = MountJournal,
-		["WardrobeCollectionFrame"] = WardrobeCollectionFrame,
-		["InspectFrame"] = InspectFrame,
-		["Blizzard_Collections"] = IsAddOnLoaded("Blizzard_Collections")
-	}
-	
-	for name, obj in pairs(uis) do
-		local status = obj and "✅ AVAILABLE" or "❌ NOT AVAILABLE"
-		self:Debug("UI " .. name .. ": " .. status)
-	end
-	
-	-- Verificar APIs críticas do 11.x
-	local apis = {
-		"C_MountJournal", "C_TransmogCollection", "C_TransmogSets"
-	}
-	
-	for _, api in ipairs(apis) do
-		local status = _G[api] and "✅ AVAILABLE" or "❌ MISSING"
-		self:Debug("API " .. api .. ": " .. status)
-	end
-end
-
-function CM:TestMorphing()
-	self:Debug("=== Testing Morphing Capabilities ===")
-	
+	-- Teste básico
 	local morpher = self:CanMorph(true)
 	if morpher then
-		self:Debug("✅ Morpher found and ready!")
-		
-		-- Test básico
-		if morpher.model then
-			self:Debug("✅ Model morphing available")
-		end
-		
-		if morpher.item then
-			self:Debug("✅ Item morphing available")
-		end
-		
-		if morpher.mount then
-			self:Debug("✅ Mount morphing available")
-		end
+		self:PrintChat("✅ Ready to morph!")
 	else
-		self:Debug("❌ No morpher available - check if iMorph is injected")
+		self:PrintChat("❌ No morpher found - load iMorph first")
 	end
 end
 
--- Comandos de debug
+-- Comando de debug
 SLASH_CLICKMORPH_DEBUG1 = "/cmdebug"
-SlashCmdList.CLICKMORPH_DEBUG = function(arg)
-	if not ClickMorphDB then
-		print("|cffff0000ClickMorph:|r Database not loaded yet")
-		return
-	end
-	
-	if arg == "test" then
-		CM:TestMorphing()
-	elseif arg == "reset" then
-		ClickMorphDB.debug = false
-		CM:PrintChat("Debug mode disabled")
-	else
-		ClickMorphDB.debug = not (ClickMorphDB.debug or false)
-		CM:PrintChat("Debug mode: " .. (ClickMorphDB.debug and "|cff00ff00ON|r" or "|cffff0000OFF|r"))
-		
-		if ClickMorphDB.debug then
-			CM:CheckSystem()
-		end
-	end
+SlashCmdList.CLICKMORPH_DEBUG = function()
+	CM:Debug()
 end
 
-SLASH_CLICKMORPH_TEST1 = "/cmtest"
-SlashCmdList.CLICKMORPH_TEST = function()
-	CM:TestMorphing()
-end
+-- Mensagem de inicialização
+local f = CreateFrame("Frame")
+f:RegisterEvent("ADDON_LOADED")
+f:SetScript("OnEvent", function(self, event, addonName)
+	if addonName == "ClickMorph" then
+		CM:PrintChat("✅ Loaded! Use /cmdebug to check status. Make sure iMorph is injected!")
+		self:UnregisterEvent(event)
+	end
+end)
