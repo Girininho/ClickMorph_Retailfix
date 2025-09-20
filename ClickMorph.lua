@@ -3,6 +3,8 @@ local CM = ClickMorph
 CM.isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
 CM.project = CM.isRetail and "Live" or "Classic"
 local FileData
+local BUILD_VERSION = select(4, GetBuildInfo())
+local ADDON_VERSION = GetAddOnMetadata("ClickMorph", "Version") or "Dev"
 
 -- inventory type -> equipment slot -> slot name
 CM.SlotNames = {
@@ -103,8 +105,14 @@ function CM:CanMorph(override)
 				return morpher
 			end
 		end
-		local name = CM.isRetail and "jMorph" or "iMorph"
-		self:PrintChat("Could not find |cffFFFF00"..name.."|r. Make sure it is loaded before you use ClickMorph.", 1, 1, 0)
+		
+		-- Verificação específica - SEMPRE iMorph já que jMorph morreu
+		local name = "iMorph"
+		if BUILD_VERSION >= 110000 then
+			self:PrintChat("Could not find |cffFFFF00"..name.."|r. Make sure iMorph is loaded and injected first for WoW 11.x retail.", 1, 1, 0)
+		else
+			self:PrintChat("Could not find |cffFFFF00"..name.."|r. Make sure it is loaded before you use ClickMorph.", 1, 1, 0)
+		end
 	end
 end
 
@@ -427,4 +435,102 @@ function CM:MorphScale(unit, value)
 	if morph and morph.scale then
 		morph.scale(unit, value)
 	end
+end
+
+-- ============================================
+-- SISTEMA DE DEBUG PARA WOW 11.X
+-- ============================================
+
+function CM:Debug(message)
+	if ClickMorphDB and ClickMorphDB.debug then
+		print("|cff7fff00ClickMorph DEBUG:|r " .. tostring(message))
+	end
+end
+
+function CM:CheckSystem()
+	self:Debug("=== ClickMorph System Check v" .. ADDON_VERSION .. " ===")
+	self:Debug("WoW Build: " .. BUILD_VERSION)
+	self:Debug("Project: " .. self.project)
+	self:Debug("IsRetail: " .. tostring(self.isRetail))
+	
+	-- Verificar morphers
+	for name, morpher in pairs(self.morphers) do
+		local status = morpher.loaded() and "✅ LOADED" or "❌ NOT LOADED"
+		self:Debug("Morpher " .. name .. ": " .. status)
+	end
+	
+	-- Verificar UIs críticas
+	local uis = {
+		["MountJournal"] = MountJournal,
+		["WardrobeCollectionFrame"] = WardrobeCollectionFrame,
+		["InspectFrame"] = InspectFrame,
+		["Blizzard_Collections"] = IsAddOnLoaded("Blizzard_Collections")
+	}
+	
+	for name, obj in pairs(uis) do
+		local status = obj and "✅ AVAILABLE" or "❌ NOT AVAILABLE"
+		self:Debug("UI " .. name .. ": " .. status)
+	end
+	
+	-- Verificar APIs críticas do 11.x
+	local apis = {
+		"C_MountJournal", "C_TransmogCollection", "C_TransmogSets"
+	}
+	
+	for _, api in ipairs(apis) do
+		local status = _G[api] and "✅ AVAILABLE" or "❌ MISSING"
+		self:Debug("API " .. api .. ": " .. status)
+	end
+end
+
+function CM:TestMorphing()
+	self:Debug("=== Testing Morphing Capabilities ===")
+	
+	local morpher = self:CanMorph(true)
+	if morpher then
+		self:Debug("✅ Morpher found and ready!")
+		
+		-- Test básico
+		if morpher.model then
+			self:Debug("✅ Model morphing available")
+		end
+		
+		if morpher.item then
+			self:Debug("✅ Item morphing available")
+		end
+		
+		if morpher.mount then
+			self:Debug("✅ Mount morphing available")
+		end
+	else
+		self:Debug("❌ No morpher available - check if iMorph is injected")
+	end
+end
+
+-- Comandos de debug
+SLASH_CLICKMORPH_DEBUG1 = "/cmdebug"
+SlashCmdList.CLICKMORPH_DEBUG = function(arg)
+	if not ClickMorphDB then
+		print("|cffff0000ClickMorph:|r Database not loaded yet")
+		return
+	end
+	
+	if arg == "test" then
+		CM:TestMorphing()
+	elseif arg == "reset" then
+		ClickMorphDB.debug = false
+		CM:PrintChat("Debug mode disabled")
+	else
+		ClickMorphDB.debug = not (ClickMorphDB.debug or false)
+		CM:PrintChat("Debug mode: " .. (ClickMorphDB.debug and "|cff00ff00ON|r" or "|cffff0000OFF|r"))
+		
+		if ClickMorphDB.debug then
+			CM:CheckSystem()
+		end
+	end
+end
+
+SLASH_CLICKMORPH_TEST1 = "/cmtest"
+SlashCmdList.CLICKMORPH_TEST = function()
+	CM:TestMorphing()
 end
